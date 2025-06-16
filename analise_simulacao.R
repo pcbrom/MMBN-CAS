@@ -1,0 +1,344 @@
+# === STEP 1: Load libraries ===
+library(jsonlite)
+library(tidyverse)
+
+# === STEP 2: Read JSONL file line by line ===
+file_path <- "outputs/mmbncas_llm_raw.jsonl"
+lines <- read_lines(file_path)
+
+# === STEP 3: Parse JSON lines into a list of lists ===
+data_list <- map(lines, ~ fromJSON(.x, simplifyVector = TRUE))
+
+# === STEP 4: Convert to tibble ===
+db <- bind_rows(data_list)
+
+# === STEP 5: Parse 'output' column (as nested JSON) ===
+parse_output <- function(x) {
+  tryCatch({
+    out <- fromJSON(x, simplifyVector = TRUE)
+    out_named <- as.list(out)
+    # Força nomeação padronizada
+    names(out_named) <- paste0("q", seq_along(out_named))
+    tibble(!!!out_named)
+  }, error = function(e) {
+    tibble(!!!set_names(rep(list(NA), 22), paste0("q", 1:22)))
+  })
+}
+
+
+output_parsed <- map(db$output, parse_output)
+
+# === STEP 6: Normalize and rename to q1–q22 ===
+output_df <- bind_rows(output_parsed)
+names(output_df) <- paste0("q", seq_len(ncol(output_df)))
+output_df <- output_df %>% mutate(across(everything(), as.numeric))
+
+
+# === STEP 7: Combine with original data ===
+db <- bind_cols(db, output_df)
+head(db)
+
+# Seleciona apenas colunas q1 a q22
+item_cols <- paste0("q", 1:22)
+item_mat <- db |> select(all_of(item_cols))
+
+# Conta as frequências por valor em cada item (valores 1 a 5 esperados)
+value_counts <- map_dfc(item_mat, ~ table(factor(.x, levels = 1:5)) |> as.integer())
+
+# Nomeia as colunas com os itens
+names(value_counts) <- item_cols
+
+# Adiciona linha de rótulo (1 a 5)
+value_counts <- value_counts |> 
+  mutate(value = 1:5) |> 
+  relocate(value)
+
+# Visualiza a tabela
+print(value_counts)
+
+
+
+
+
+
+# === STEP 1: Load libraries ===
+library(psych)
+library(dplyr)
+library(tibble)
+library(purrr)
+
+# === STEP 2: Define item columns ===
+item_cols <- paste0("q", 1:22)
+
+# === STEP 3: Helper functions ===
+
+cronbach_alpha <- function(mat) {
+  mat <- na.omit(mat)
+  if (ncol(mat) < 2 || nrow(mat) == 0) return(NA)
+  alpha(mat)$total[["raw_alpha"]]
+}
+
+omega_total <- function(mat) {
+  mat <- na.omit(mat)
+  if (ncol(mat) < 2 || nrow(mat) == 0) return(NA)
+  
+  # Remove colunas com variância zero
+  vars <- apply(mat, 2, var, na.rm = TRUE)
+  mat <- mat[, vars > 0, drop = FALSE]
+  if (ncol(mat) < 2) return(NA)
+  
+  tryCatch({
+    suppressMessages(
+      suppressWarnings({
+        omega_result <- omega(mat, nfactors = 1, fm = "ml", plot = FALSE)
+        omega_result$omega.tot
+      })
+    )
+  }, error = function(e) NA)
+}
+
+reliability_for <- function(cols, data_subset) {
+  mat <- data_subset[, cols, drop = FALSE]
+  list(
+    alpha = cronbach_alpha(mat),
+    omega = omega_total(mat)
+  )
+}
+
+# === STEP 4: Dimension mapping ===
+dimensions <- list(
+  governance_strategy        = paste0("q", 1:6),
+  operational_integration    = paste0("q", c(7, 8, 9, 10, 11, 12)),
+  sustainability_scalability = paste0("q", 13:22)
+)
+
+# === STEP 5: Compute reliability ===
+records <- list()
+
+# 5.1 Full scale – all profiles
+res <- reliability_for(item_cols, db)
+records <- append(records, list(
+  tibble(cut = "full_scale", profile = "all", dimension = "all",
+         n_items = 22, alpha = res$alpha, omega = res$omega)
+))
+
+# 5.2 Full scale – by profile
+for (prof in unique(db$profile)) {
+  subset_prof <- filter(db, profile == prof)
+  res <- reliability_for(item_cols, subset_prof)
+  records <- append(records, list(
+    tibble(cut = "full_scale", profile = prof, dimension = "all",
+           n_items = 22, alpha = res$alpha, omega = res$omega)
+  ))
+}
+
+# 5.3 Each dimension (overall + by profile)
+for (dim in names(dimensions)) {
+  cols <- dimensions[[dim]]
+  
+  # overall
+  res <- reliability_for(cols, db)
+  records <- append(records, list(
+    tibble(cut = "dimension", profile = "all", dimension = dim,
+           n_items = length(cols), alpha = res$alpha, omega = res$omega)
+  ))
+  
+  # by profile
+  for (prof in unique(db$profile)) {
+    subset_prof <- filter(db, profile == prof)
+    res <- reliability_for(cols, subset_prof)
+    records <- append(records, list(
+      tibble(cut = "dimension", profile = prof, dimension = dim,
+             n_items = length(cols), alpha = res$alpha, omega = res$omega)
+    ))
+  }
+}
+
+# === STEP 6: Consolidate and display ===
+reliability_df <- bind_rows(records) |>
+  mutate(across(c(alpha, omega), \(x) round(x, digits = 3)))
+print(reliability_df)
+
+
+
+
+
+
+
+
+# === STEP 1: Load libraries ===
+library(psych)
+library(GPArotation)
+library(tidyverse)
+
+# === STEP 2: Definir itens ===
+item_cols <- paste0("q", 1:22)
+item_mat <- db[, item_cols] |> drop_na()
+
+# === STEP 3: Parallel Analysis using Spearman ===
+cor_spear <- cor(item_mat, method = "spearman", use = "pairwise.complete.obs")
+
+# Valores próprios reais
+eig_real <- eigen(cor_spear)$values
+
+# Simulação paralela com permutação dos dados
+set.seed(123)
+n_iter <- 1000
+eig_rand <- matrix(NA, nrow = n_iter, ncol = length(item_cols))
+
+for (i in 1:n_iter) {
+  rand <- sample(unlist(item_mat), size = length(unlist(item_mat)), replace = TRUE)
+  rand_mat <- matrix(rand, ncol = ncol(item_mat))
+  colnames(rand_mat) <- colnames(item_mat)
+  eig_rand[i, ] <- eigen(cor(cor(rand_mat, method = "spearman"))) $values
+}
+
+mean_rand <- colMeans(eig_rand)
+
+# Plot
+plot(1:22, eig_real, type = "o", pch = 16, col = "blue",
+     xlab = "Factor", ylab = "Eigenvalue", main = "Parallel Analysis – Spearman")
+lines(1:22, mean_rand, type = "o", lty = 2, col = "red")
+abline(v = 3, lty = 3)
+legend("topright", legend = c("Actual (Spearman)", "Parallel mean"),
+       col = c("blue", "red"), lty = c(1, 2), pch = 16)
+
+# === STEP 4: EFA with 3 factors (ML, Promax rotation) ===
+efa <- fa(item_mat, nfactors = 3, fm = "ml", rotate = "promax")
+
+# === STEP 5: Mostrar apenas cargas salientes (|λ| ≥ 0.30) ===
+load_df <- as.data.frame(round(efa$loadings[1:22, ], 3))
+salient <- load_df
+salient[abs(salient) < 0.30] <- '-'
+
+cat("\nSalient loadings (|λ| ≥ 0.30):\n")
+print(salient)
+
+
+
+
+
+# === STEP 1: Load library ===
+library(lavaan)
+library(dplyr)
+
+# === STEP 2: Modelo CFA com 3 fatores ===
+model_cfa <- "
+F1 =~ q1 + q2 + q3 + q4 + q5 + q6
+F2 =~ q7 + q8 + q9 + q10 + q11 + q12
+F3 =~ q13 + q14 + q15 + q16 + q17 + q18 + q19 + q20 + q21 + q22
+"
+
+# === STEP 3: Ajuste com DWLS e dados ordinais ===
+fit <- sem(model_cfa, data = db, estimator = "WLSMV", ordered = colnames(db)[grepl("^q\\d+$", colnames(db))])
+
+# === STEP 4: Extração dos índices de modificação ===
+mi <- modindices(fit)
+
+# === STEP 5: Filtro para correlações residuais entre itens (q* ~~ q*) ===
+mi_errors <- mi %>%
+  filter(op == "~~", grepl("^q\\d+$", lhs), grepl("^q\\d+$", rhs)) %>%
+  arrange(desc(mi))
+
+# === STEP 6: Mostrar os 10 maiores ===
+print(mi_errors[1:10, c("lhs", "rhs", "mi")])
+
+
+
+
+
+
+
+
+# === STEP 1: Load lavaan ===
+library(lavaan)
+
+# === STEP 2: Definir o modelo bifatorial ===
+model_bifactor <- "
+G =~ q1 + q2 + q3 + q4 + q5 + q6 + q7 + q8 + q9 + q10 + q11 + q12 + q13 + q14 + q15 + q16 + q17 + q18 + q19 + q20 + q21 + q22
+F1 =~ q1 + q2 + q3 + q4 + q5 + q6
+F2 =~ q7 + q8 + q9 + q10 + q11 + q12
+F3 =~ q13 + q14 + q15 + q16 + q17 + q18 + q19 + q20 + q21 + q22
+G ~~ 0*F1 + 0*F2 + 0*F3
+F1 ~~ 0*F2 + 0*F3
+F2 ~~ 0*F3
+"
+
+# === STEP 3: Ajustar modelo com DWLS ===
+fit_bifactor <- sem(model_bifactor,
+                    data = db,
+                    estimator = "WLSMV",
+                    ordered = colnames(db)[grepl("^q\\d+$", colnames(db))])
+
+# === STEP 4: Exibir resumo com medidas de ajuste ===
+summary(fit_bifactor, fit.measures = TRUE, standardized = TRUE)
+
+
+
+
+
+
+# === STEP 1: Carregar pacotes ===
+library(mirt)
+
+
+# === STEP 2: Ajustar modelo GRM unidimensional ===
+model_grm <- mirt(db[, paste0("q", 1:22)],
+                  model = 1,
+                  itemtype = "graded",
+                  SE = TRUE)
+
+# === STEP 3: Mostrar parâmetros (discriminações e thresholds) ===
+summary(model_grm)
+
+# Diretório de saída (modifique conforme necessário)
+output_dir <- "outputs/"
+
+# Cria curva de informação por item
+png(filename = file.path(output_dir, "item_information.png"), width = 800, height = 600)
+plot(model_grm, type = "info")
+dev.off()
+
+# Cria curva de informação total com erro padrão
+png(filename = file.path(output_dir, "test_information.png"), width = 800, height = 600)
+plot(model_grm, type = "infoSE")
+dev.off()
+
+
+
+
+theta_vals <- seq(-4, 4, length.out = 201)
+prob_matrix <- probtrace(model_grm, Theta = matrix(theta_vals))
+
+# Transforma para data.frame com coluna theta
+icc_df <- as.data.frame(prob_matrix)
+icc_df$theta <- theta_vals
+
+# Transforma para formato longo: item, category, probability
+icc_long <- icc_df |>
+  pivot_longer(cols = -theta, names_to = "key", values_to = "probability") |>
+  separate(key, into = c("item", "category"), sep = "\\.P\\.") |>
+  mutate(
+    item = factor(item, levels = paste0("q", 1:22)),
+    category = factor(category, levels = as.character(1:5))
+  )
+
+ggplot(icc_long, aes(x = theta, y = probability, color = category)) +
+  geom_line(size = 0.9) +
+  facet_wrap(~ item, ncol = 4) +
+  scale_color_brewer(palette = "Dark2") +
+  labs(
+    title = "Item Characteristic Curves (ICC) – GRM",
+    x = expression(theta),
+    y = "Probability",
+    color = "Category"
+  ) +
+  theme_minimal(base_size = 12)
+ggsave("outputs/grid_icc_grm.png", width = 12, height = 14, dpi = 300)
+
+# === STEP 4: Estimar habilidade (theta) usando MLE ===
+theta_estimates <- fscores(model_grm, method = "EAP", full.scores = TRUE)
+# Adiciona as estimativas de theta ao dataframe original
+db <- db %>%
+  mutate(theta = theta_estimates)
+# === STEP 5: Salvar resultados com theta estimado ===
