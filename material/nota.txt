@@ -1,0 +1,3 @@
+Quando possível, preciso que revise a seção 5 todinha, pois ela se refere ao procedimento. Outra observação, é possível mencionar os pacotes usados no Python para cada atividade realizada?
+
+A seção 5.1.5 refere-se a medida de desempenho, não escrevi, pois vamos comparar os resultados da aplicação real que seria a última etapa do ciclo. Daí preciso que relate a parte técnica como fez nos outros para eu prosseguir.
