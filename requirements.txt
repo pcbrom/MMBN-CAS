@@ -1,4 +1,9 @@
-python-dotenv
-pandas
-tqdm
-openai
+# Start of Selection
+python-dotenv  # For loading environment variables
+pandas         # For data manipulation and analysis
+tqdm           # For progress bar display during iterations
+openai         # For interacting with OpenAI's API
+rpy2           # For interfacing with R from Python
+numpy          # For numerical operations and array handling
+tenacity       # For retrying API calls with exponential backoff
+# End of Selection

@@ -1,3 +1,11 @@
 Quando possível, preciso que revise a seção 5 todinha, pois ela se refere ao procedimento. Outra observação, é possível mencionar os pacotes usados no Python para cada atividade realizada?
 
+python-dotenv  # For loading environment variables
+pandas         # For data manipulation and analysis
+tqdm           # For progress bar display during iterations
+openai         # For interacting with OpenAI's API
+rpy2           # For interfacing with R from Python
+numpy          # For numerical operations and array handling
+tenacity       # For retrying API calls with exponential backoff
+
 A seção 5.1.5 refere-se a medida de desempenho, não escrevi, pois vamos comparar os resultados da aplicação real que seria a última etapa do ciclo. Daí preciso que relate a parte técnica como fez nos outros para eu prosseguir.
