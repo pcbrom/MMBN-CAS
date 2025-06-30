@@ -305,8 +305,6 @@ plot(model_grm, type = "infoSE")
 dev.off()
 
 
-
-
 theta_vals <- seq(-4, 4, length.out = 201)
 prob_matrix <- probtrace(model_grm, Theta = matrix(theta_vals))
 
@@ -338,7 +336,16 @@ ggsave("outputs/grid_icc_grm.png", width = 12, height = 14, dpi = 300)
 
 # === STEP 4: Estimar habilidade (theta) usando MLE ===
 theta_estimates <- fscores(model_grm, method = "EAP", full.scores = TRUE)
+
+# coef() with IRTpars = TRUE returns 'a' and 'b1'..'b4'
+item_pars <- coef(model_grm, IRTpars = TRUE, simplify = TRUE)$items |>
+  as_tibble(rownames = "item")
+write_csv(item_pars, "outputs/grm_item_parameters_mmab_ncas.csv")
+
 # Adiciona as estimativas de theta ao dataframe original
 db <- db %>%
   mutate(theta = theta_estimates)
+db$theta <- db$theta[, 1]
+
 # === STEP 5: Salvar resultados com theta estimado ===
+write_csv(db, "outputs/mmbncas_llm_with_theta.csv")
