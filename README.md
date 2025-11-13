@@ -1,8 +1,6 @@
 # Blockchain Maturity Model for Sustainable Agri-Food Supply Chain Businesses
 
-<a href="https://doi.org/10.5281/zenodo.17603492" target="_blank">
-  <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.17603492.svg" alt="DOI">
-</a>
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17603492.svg)](https://doi.org/10.5281/zenodo.17603492)
 
 End-to-end pipeline for simulation, psychometric analysis, and equating of a 22-item ordinal instrument (Likert 1–5). This repository includes:
 
