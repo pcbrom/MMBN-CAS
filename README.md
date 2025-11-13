@@ -85,9 +85,3 @@ Expected results/artifacts (examples)
 
 License
 - See `LICENSE` for terms of use and redistribution.
-
-
-Quick FAQ
-- Can I skip the simulation? Yes. Use the precomputed files in `outputs/` and continue from `analise_simulacao.R` to `equalizacao.ipynb`.
-- Where do I set the API key? In `.env` (`OPENAI_API_KEY=...`).
-- Do I need both R and Python? Yes: R for PA/EFA/CFA and IRT calibration; Python for simulation and equating/visuals.
