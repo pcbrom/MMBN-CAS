@@ -197,3 +197,4 @@ cython_debug/
 # Project-specific ignores
 # Do not track updates to research/support materials
 material.zip
+.Rhistory
