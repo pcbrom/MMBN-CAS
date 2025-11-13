@@ -193,3 +193,7 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 .Rproj.user
+
+# Project-specific ignores
+# Do not track updates to research/support materials
+material/
