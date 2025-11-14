@@ -2,6 +2,36 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17603492.svg)](https://doi.org/10.5281/zenodo.17603492)
 
+## How to cite
+
+If you use this pipeline or its data, please cite as follows:
+
+### APA
+
+Carvalho Brom, P., & dos Santos, P. H. (2025). pcbrom/MMBN-CAS: v1.1 (v1.1). Zenodo. https://doi.org/10.5281/zenodo.17603492
+
+### BibTeX
+
+```
+@software{carvalho_brom_2025_17603492,
+  author       = {Carvalho Brom, Pedro and
+                  dos Santos, Paulo Henrique},
+  title        = {pcbrom/MMBN-CAS: v1.1},
+  month        = nov,
+  year         = 2025,
+  publisher    = {Zenodo},
+  version      = {v1.1},
+  doi          = {10.5281/zenodo.17603492},
+  url          = {https://doi.org/10.5281/zenodo.17603492},
+  swhid        = {swh:1:dir:339dd11e50fa3653469351dc4b7dad1706bba71c
+                   ;origin=https://doi.org/10.5281/zenodo.17603491;vi
+                   sit=swh:1:snp:60f15d9eb83b37976d6635ac020287789360
+                   7b0f;anchor=swh:1:rel:d61db5e90059bfc3488f3b113b06
+                   5041903f781a;path=pcbrom-MMBN-CAS-1d4b85d
+                  },
+}
+```
+
 End-to-end pipeline for simulation, psychometric analysis, and equating of a 22-item ordinal instrument (Likert 1–5). This repository includes:
 
 - Synthetic response generation with an LLM for maturity profiles (novice, intermediate, advanced).
